@@ -1,0 +1,26 @@
+{
+  "name": "claudio-radio",
+  "version": "0.1.0",
+  "description": "个人 AI 音乐电台 —— Claude 做 DJ，网易云负责选歌",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "NODE_USE_ENV_PROXY=1 node --watch src/server.js",
+    "start": "NODE_USE_ENV_PROXY=1 node src/server.js",
+    "ncm": "node scripts/start-ncm.js",
+    "test": "node --test tests/*.test.js",
+    "test:claude": "node scripts/test-claude.js",
+    "test:tts": "node scripts/test-tts.js",
+    "test:netease": "node scripts/test-netease.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "node-cron": "^3.0.3",
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

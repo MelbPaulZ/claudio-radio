@@ -1,0 +1,37 @@
+# Node
+node_modules/
+npm-debug.log*
+*.log
+
+# Env（真实配置，含 secrets）
+.env
+.env.local
+.env.*.local
+
+# SQLite 运行时数据
+state.db
+state.db-shm
+state.db-wal
+state.db-journal
+
+# 本地缓存（TTS MP3 等）
+cache/
+
+# 个人化内容（每个用户的品味 / 节律 / 情绪规则 / 歌单）
+# 白名单放过 *.example.* 让仓库里仍有模板
+user/*.md
+user/*.json
+!user/*.example.md
+!user/*.example.json
+
+# 第三方服务（npm run ncm 首次启动会 clone 一份 NeteaseCloudMusicApi 到这里）
+.ncm/
+
+# Claude Code 本地工作区设置（每台机器一份，别污染别人的）
+.claude/settings.local.json
+
+# 开发过程文档（plans / specs / 草稿），不对外
+docs/superpowers/
+
+# macOS
+.DS_Store

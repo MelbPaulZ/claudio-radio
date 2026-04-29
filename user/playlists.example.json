@@ -1,5 +1,5 @@
 {
-  "description": "你想优先纳入 DJ 选歌池的歌单 ID 列表。留空则只用红心歌单。",
+  "description": "primary_playlists 非空时，曲库只用这些歌单（替换默认）；留空则用红心+最近播放+每日推荐。exclude_playlists 里的歌始终从最终池子剔除。",
   "primary_playlists": [],
   "exclude_playlists": [],
   "notes": "歌单 ID 在网易云 app 歌单页 → 分享 → 复制链接，URL 里 id= 后面的那串数字"

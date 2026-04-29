@@ -5,7 +5,7 @@
 架构参考：@秒秒Guo 的 [Claudio 施工图](https://www.xiaohongshu.com/)。本仓库是一个可直接运行的 Node.js 实现。
 
 ## 你将得到什么
-- 一个浏览器播放器 (http://localhost:8080)
+- 一个浏览器播放器 (http://localhost:8787)
 - Claude 根据你的网易云红心歌单 + 品味语料选歌，像真 DJ 一样串场
 - 早 7 点 / 9 点 / 下午 1 点 / 傍晚 6 点 / 夜里 10 点自动触发不同风格的"节目"
 - 每小时脉冲检查、可以用自然语言跟 DJ 聊天（"太吵了换一首"、"来点爵士"）
@@ -62,7 +62,7 @@ npm run ncm
 npm run dev
 ```
 
-打开浏览器：http://localhost:8080
+打开浏览器：http://localhost:8787
 
 ## 填好你的人设（这是 DJ 灵魂）
 

@@ -51,14 +51,21 @@ test('buildVolcBody 返回符合火山协议的对象', () => {
     uid: 'claudio-radio',
     reqid: 'req-123',
     text: '你好 Claudio',
+    volumeRatio: 1.5,
   });
 
   assert.deepEqual(body, {
     app:     { appid: 'APP', token: 'TOK', cluster: 'volcano_tts' },
     user:    { uid: 'claudio-radio' },
-    audio:   { voice_type: 'myVoice', encoding: 'mp3', speed_ratio: 1.0 },
+    audio:   { voice_type: 'myVoice', encoding: 'mp3', speed_ratio: 1.0, volume_ratio: 1.5 },
     request: { reqid: 'req-123', text: '你好 Claudio', text_type: 'plain', operation: 'query' },
   });
+});
+
+test('buildCacheKey 不同 volumeRatio 返回不同 key', () => {
+  const a = buildCacheKey('voiceA', '相同文本', 1.0);
+  const b = buildCacheKey('voiceA', '相同文本', 1.5);
+  assert.notEqual(a, b);
 });
 
 test('parseVolcResponse 成功返回 Buffer', () => {

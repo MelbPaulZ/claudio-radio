@@ -9,6 +9,7 @@ import 'dotenv/config';
 import express from 'express';
 import { WebSocketServer } from 'ws';
 import http from 'node:http';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -24,7 +25,7 @@ import * as ncm from './music/netease.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
-const PORT = Number(process.env.PORT || 8080);
+const PORT = Number(process.env.PORT || 8787);
 
 const app = express();
 app.use(express.json());
@@ -193,23 +194,55 @@ async function handleSimpleCommand(action) {
   }
 }
 
+async function readPlaylistsConfig() {
+  try {
+    const raw = await fs.readFile(path.join(ROOT, 'user', 'playlists.json'), 'utf8');
+    const cfg = JSON.parse(raw);
+    const toIds = arr => Array.isArray(arr) ? arr.map(x => Number(x)).filter(Number.isFinite) : [];
+    return {
+      primary: toIds(cfg.primary_playlists),
+      exclude: toIds(cfg.exclude_playlists),
+    };
+  } catch {
+    return { primary: [], exclude: [] };
+  }
+}
+
 async function refreshSongPool() {
   try {
-    const [liked, recent, recs] = await Promise.all([
-      ncm.likedSongs().catch(() => []),
-      ncm.recentPlayed().catch(() => []),
-      ncm.dailyRecommend().catch(() => []),
-    ]);
+    const { primary, exclude } = await readPlaylistsConfig();
+
+    let sources;
+    if (primary.length) {
+      sources = await Promise.all(primary.map(id => ncm.playlistSongs(id).catch(() => [])));
+    } else {
+      sources = await Promise.all([
+        ncm.likedSongs().catch(() => []),
+        ncm.recentPlayed().catch(() => []),
+        ncm.dailyRecommend().catch(() => []),
+      ]);
+    }
+
+    const excludedIds = new Set();
+    if (exclude.length) {
+      const excludeLists = await Promise.all(exclude.map(id => ncm.playlistSongs(id).catch(() => [])));
+      for (const list of excludeLists) for (const s of list) if (s) excludedIds.add(s.id);
+    }
+
     // 合并去重
     const seen = new Set();
     const pool = [];
-    for (const s of [...liked, ...recent, ...recs]) {
-      if (!s || seen.has(s.id)) continue;
-      seen.add(s.id);
-      pool.push(s);
+    for (const list of sources) {
+      for (const s of list) {
+        if (!s || seen.has(s.id) || excludedIds.has(s.id)) continue;
+        seen.add(s.id);
+        pool.push(s);
+      }
     }
     runtime.songPool = pool;
-    log.info(`🎵 曲库更新: ${pool.length} 首`);
+    const src = primary.length ? `自定义歌单 ${primary.length} 个` : '红心+最近+推荐';
+    const exc = exclude.length ? `, 排除 ${excludedIds.size} 首` : '';
+    log.info(`🎵 曲库更新: ${pool.length} 首（${src}${exc}）`);
   } catch (e) {
     log.error('曲库更新失败:', e.message);
   }

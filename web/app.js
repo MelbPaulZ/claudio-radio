@@ -219,11 +219,27 @@ async function playDj(data) {
     }
   } else if (hasTts) {
     // ---- 普通 duck：压低音量说话，说完恢复 ----
-    const savedVol = music.volume;
+    // 防御：若当前 music.volume < 0.5，说明上一次 duck 还没恢复（ended 未触发
+    // 或被新 src 中断），直接读当前值会把"已被压低的音量"当成正常音量保存，
+    // 之后 restore 反而把音量锁死在低位。此时 fallback 到 1.0。
+    const savedVol = music.volume >= 0.5 ? music.volume : 1.0;
     music.volume = Math.max(TTS_DUCK_MIN, savedVol * TTS_DUCK_FACTOR);
+
+    // 两种结束路径恢复音量：正常播完 / 播放出错。
+    // 注意：不能监听 'abort' —— 设置 tts.src 时浏览器会自己 fire abort，
+    // 会把本轮的 restore 提前触发，导致音乐瞬间被恢复、听起来像没 duck。
+    // "被下一段 TTS 打断"的场景由新一轮 duck 分支里的 savedVol 防御 + 新一轮 ended 接管。
+    let restored = false;
+    const restore = () => {
+      if (restored) return;
+      restored = true;
+      music.volume = savedVol;
+    };
+    tts.addEventListener('ended', restore, { once: true });
+    tts.addEventListener('error', restore, { once: true });
+
     tts.src = data.url;
-    try { await tts.play(); } catch (e) { console.warn('TTS play fail:', e); }
-    tts.addEventListener('ended', () => { music.volume = savedVol; }, { once: true });
+    try { await tts.play(); } catch (e) { console.warn('TTS play fail:', e); restore(); }
   }
 }
 
@@ -329,7 +345,7 @@ async function retryCurrentSong() {
 }
 
 // ========== Autoscroll + "N NEW" pill ==========
-const NEAR_BOTTOM_PX = 120;
+const NEAR_BOTTOM_PX = 500;
 const newPillEl = $('new-pill');
 const newPillCountEl = $('new-pill-count');
 let newPillCount = 0;

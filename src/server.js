@@ -6,6 +6,8 @@
  */
 
 import 'dotenv/config';
+import { exitIfInvalidEnv } from './env.js';
+exitIfInvalidEnv();
 import express from 'express';
 import { WebSocketServer } from 'ws';
 import http from 'node:http';

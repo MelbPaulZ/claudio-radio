@@ -38,12 +38,14 @@ async function withRetry(fn, label) {
       return await fn();
     } catch (e) {
       lastErr = e;
+      const code = e?.code || e?.cause?.code;
       const transient =
-        /ECONNREFUSED|ETIMEDOUT|fetch failed|fetch error/i.test(String(e?.message || e)) ||
+        /ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|EPIPE|socket hang up|fetch failed|fetch error/i.test(String(e?.message || e)) ||
+        (typeof code === 'string' && /^(ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|EPIPE)$/.test(code)) ||
         (typeof e?.status === 'number' && e.status >= 500);
       if (!transient || i === delays.length) throw e;
       const wait = delays[i];
-      log.warn(`[netease] ${label} attempt ${i + 1} failed (${e.message}), retrying in ${wait}ms`);
+      log.warn(`[netease] ${label} attempt ${i + 1} failed (${e?.message || e}), retrying in ${wait}ms`);
       await sleep(wait);
     }
   }

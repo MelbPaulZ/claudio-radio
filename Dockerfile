@@ -16,7 +16,7 @@ FROM node:20-alpine AS runtime
 RUN apk add --no-cache tini wget
 
 # Pre-install Claude Code CLI globally (used only when CLAUDE_MODE=cli).
-# Adds ~150MB but keeps cli-mode users from having to mount node_modules.
+# Adds ~318MB but keeps cli-mode users from having to mount node_modules.
 RUN npm install -g @anthropic-ai/claude-code
 
 WORKDIR /app

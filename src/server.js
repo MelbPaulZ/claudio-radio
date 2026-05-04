@@ -22,6 +22,7 @@ import { startScheduler } from './scheduler.js';
 import { state } from './state.js';
 import { mergePlay } from './queue.js';
 import * as ncm from './music/netease.js';
+import { healthHandler } from './health.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -29,6 +30,7 @@ const PORT = Number(process.env.PORT || 8787);
 
 const app = express();
 app.use(express.json());
+app.get('/health', healthHandler);
 
 // ---- 静态 ----
 app.use('/tts', express.static(cacheDir()));

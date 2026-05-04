@@ -1,0 +1,28 @@
+# Secrets — never bake into image
+.env
+.env.*
+!.env.example
+
+# Build artifacts and dev state
+node_modules
+cache
+data
+state.db
+state.db-shm
+state.db-wal
+state.db-journal
+.ncm
+
+# VCS
+.git
+.gitignore
+.github
+
+# Docs and tests not needed at runtime
+docs
+tests
+*.md
+!README.md
+
+# OS junk
+.DS_Store

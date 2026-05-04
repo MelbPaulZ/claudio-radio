@@ -7,6 +7,8 @@
  * 默认监听 3000 端口。
  */
 
+import { log } from '../log.js';
+
 const BASE = process.env.NETEASE_API_URL || 'http://localhost:3000';
 const UID = process.env.NETEASE_USER_ID;
 // 从 .env 的 NETEASE_COOKIE 读取。从浏览器 Copy MUSIC_U=xxxxxxx 整条进来。
@@ -15,6 +17,38 @@ const COOKIE = (process.env.NETEASE_COOKIE || '').trim();
 // 简单的内存缓存，避免重复请求
 const cache = new Map();
 const CACHE_TTL = 10 * 60 * 1000; // 10 min
+
+/**
+ * Sleep helper for retry backoff.
+ */
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+/**
+ * Wrap a network call with 3-attempt exponential backoff (1s, 2s, 4s).
+ * Retries on network errors (ECONNREFUSED, ETIMEDOUT, fetch failed) and 5xx.
+ * Does not retry on 4xx (client error — not transient).
+ */
+async function withRetry(fn, label) {
+  const delays = [1000, 2000, 4000];
+  let lastErr;
+  for (let i = 0; i <= delays.length; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      const transient =
+        /ECONNREFUSED|ETIMEDOUT|fetch failed|fetch error/i.test(String(e?.message || e)) ||
+        (typeof e?.status === 'number' && e.status >= 500);
+      if (!transient || i === delays.length) throw e;
+      const wait = delays[i];
+      log.warn(`[netease] ${label} attempt ${i + 1} failed (${e.message}), retrying in ${wait}ms`);
+      await sleep(wait);
+    }
+  }
+  throw lastErr;
+}
 
 async function get(path, params = {}, useCache = true) {
   const allParams = { ...params, timestamp: useCache ? Math.floor(Date.now() / CACHE_TTL) : Date.now() };
@@ -29,7 +63,15 @@ async function get(path, params = {}, useCache = true) {
     if (Date.now() - t < CACHE_TTL) return v;
   }
 
-  const res = await fetch(url);
+  const res = await withRetry(async () => {
+    const r = await fetch(url);
+    if (!r.ok && r.status >= 500) {
+      const err = new Error(`NCM ${path} -> HTTP ${r.status}`);
+      err.status = r.status;
+      throw err;
+    }
+    return r;
+  }, `GET ${path}`);
   if (!res.ok) throw new Error(`NCM ${path} -> HTTP ${res.status}`);
   const json = await res.json();
   if (useCache) cache.set(cacheKey, { t: Date.now(), v: json });

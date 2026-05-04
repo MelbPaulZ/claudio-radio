@@ -40,7 +40,7 @@ ENV NODE_ENV=production \
 EXPOSE 8787
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget -q --spider http://localhost:8787/health || exit 1
+  CMD wget --no-proxy -q --spider http://127.0.0.1:8787/health || exit 1
 
 ENTRYPOINT ["tini", "--"]
 CMD ["node", "src/server.js"]

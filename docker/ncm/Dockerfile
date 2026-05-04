@@ -19,6 +19,6 @@ USER node
 ENV PORT=3335
 EXPOSE 3335
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD wget -q --spider http://localhost:3335 || exit 1
+  CMD wget --no-proxy -q --spider http://127.0.0.1:3335 || exit 1
 ENTRYPOINT ["tini", "--"]
 CMD ["node", "app.js"]

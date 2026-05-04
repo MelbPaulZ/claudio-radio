@@ -1,0 +1,36 @@
+# Claudio Radio — default deployment.
+# Usage: copy this file to a fresh directory, drop a filled .env beside it, run `docker compose up -d`.
+# Two services: claudio (main app, exposed on 8787) + ncm (NetEase API proxy, internal only).
+
+services:
+  ncm:
+    image: melbpaulz/claudio-ncm:${CLAUDIO_VERSION:-latest}
+    container_name: claudio-ncm
+    restart: unless-stopped
+    networks: [claudio_net]
+
+  claudio:
+    image: melbpaulz/claudio-radio:${CLAUDIO_VERSION:-latest}
+    container_name: claudio-radio
+    restart: unless-stopped
+    depends_on:
+      ncm:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      # Force NCM URL to the compose service name regardless of what users put in .env.
+      NETEASE_API_URL: http://ncm:3335
+      # State DB path inside container, lined up with the volume mount.
+      STATE_DB_PATH: /app/data/state.db
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./data:/app/data
+      - ./cache:/app/cache
+      - ./user:/app/user
+      # Uncomment for CLAUDE_MODE=cli (and ensure `claude` is logged in on the host):
+      # - ~/.claude:/home/node/.claude:ro
+    networks: [claudio_net]
+
+networks:
+  claudio_net: {}

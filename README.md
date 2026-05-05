@@ -11,6 +11,64 @@
 - 每小时脉冲检查、可以用自然语言跟 DJ 聊天（"太吵了换一首"、"来点爵士"）
 - 天气和今天的日程会被 DJ 夹杂到串词里
 
+## Docker 部署（推荐）
+
+**前置**：Docker Desktop 或 Docker Engine + `docker compose` v2。
+
+```bash
+# 1. 准备目录
+mkdir claudio && cd claudio
+
+# 2. 拿模板
+curl -O https://raw.githubusercontent.com/MelbPaulZ/claudio-radio/main/compose.yml
+curl -O https://raw.githubusercontent.com/MelbPaulZ/claudio-radio/main/.env.example
+
+# 3. 填 key
+mv .env.example .env
+# 编辑 .env，按里面的注释填 NETEASE / VOLC / OPENWEATHER / ANTHROPIC（如果用 api 模式）
+
+# 4. 准备目录（持久化数据）
+mkdir -p data cache user
+
+# 5. （可选）复制你的品味文档到 user/
+# 没有的话，DJ 用默认人格也能跑
+
+# 6. 起！
+docker compose up -d
+
+# 浏览器打开 http://localhost:8787
+```
+
+### CLAUDE_MODE：用 API key 还是 Claude Code CLI？
+
+| 模式 | 怎么填 .env | compose.yml 调整 |
+|---|---|---|
+| `api`（默认）| 填 `ANTHROPIC_API_KEY` | 不用动 |
+| `cli`（蹭 Max 订阅）| 留空 `ANTHROPIC_API_KEY`，写 `CLAUDE_MODE=cli` | 取消注释 `- ~/.claude:/home/node/.claude:ro` 那行；宿主机要先 `claude login` 过 |
+
+### 升级与回滚
+
+```bash
+# 升级到最新
+docker compose pull && docker compose up -d
+
+# 锁定到某个版本：在 .env 里写
+CLAUDIO_VERSION=v0.1.0
+docker compose pull && docker compose up -d
+```
+
+### 常见问题
+
+- **报 `数据目录不可写 / Data directory not writable`**：Linux 宿主上挂载目录必须能被容器内的 `node` 用户（uid 1000）写。`mkdir -p data cache user` 之后跑一句 `sudo chown -R 1000:1000 data cache user` 即可。macOS / Windows + Docker Desktop 通常自动处理；只有 Linux 直接装 Docker / Podman rootful 时会遇到
+- **8787 端口被占了**：编辑 `compose.yml`，把 `"8787:8787"` 改成 `"8788:8787"`，浏览器开 `:8788`
+- **日历没了**：Docker 容器看不到 macOS 日历。设 `CALENDAR_ICS_URL` 为 Google/iCloud 日历的 ICS 订阅链接即可恢复
+- **想看日志**：`docker compose logs -f claudio`
+- **想清缓存**：`rm -rf cache/tts/*`，下次 DJ 串词会重新合成
+- **数据迁移**：`data/`、`cache/`、`user/` 三个目录整体打包就是全部状态。注意 `data/state.db` 必须连同 `state.db-shm` 和 `state.db-wal` 一起拷
+- **只暴露在内网**：把 `compose.yml` 的 `"8787:8787"` 改成 `"127.0.0.1:8787:8787"`
+
+---
+
 ## 运行前准备
 
 **1. 装 Node.js 20+**

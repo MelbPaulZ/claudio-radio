@@ -4,11 +4,32 @@
  */
 
 import Database from 'better-sqlite3';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const db = new Database(path.join(__dirname, '..', 'state.db'));
+
+const DB_PATH = process.env.STATE_DB_PATH || path.join(__dirname, '..', 'state.db');
+
+// Ensure parent dir exists and is writable. In Docker, /app/data is bind-mounted;
+// if the host owner doesn't grant write access, fail fast with a clear message
+// rather than the cryptic SQLITE_READONLY later.
+const DB_DIR = path.dirname(DB_PATH);
+try {
+  fs.mkdirSync(DB_DIR, { recursive: true });
+  const probe = path.join(DB_DIR, '.write-probe');
+  fs.writeFileSync(probe, '');
+  fs.unlinkSync(probe);
+} catch (e) {
+  process.stderr.write(`\n[fatal] 数据目录不可写 / Data directory not writable: ${DB_DIR}\n`);
+  process.stderr.write(`        ${e.message}\n`);
+  process.stderr.write(`        请检查权限（Docker 用户：宿主目录归属 uid 1000）\n`);
+  process.stderr.write(`        Check permissions (Docker users: host dir must be writable by uid 1000)\n\n`);
+  process.exit(1);
+}
+
+const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 
 db.exec(`

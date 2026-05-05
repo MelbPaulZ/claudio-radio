@@ -15,7 +15,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { state } from './state.js';
 import { weather, weatherText } from './weather/openweather.js';
-import { todayEvents, calendarText } from './calendar/macos.js';
+import { todayEvents, calendarText } from './calendar/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');

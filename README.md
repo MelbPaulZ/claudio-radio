@@ -82,7 +82,7 @@ docker compose pull && docker compose up -d
 ### 常见问题
 
 - **报 `数据目录不可写 / Data directory not writable`**：Linux 宿主上挂载目录必须能被容器内的 `node` 用户（uid 1000）写。`mkdir -p data cache user` 之后跑一句 `sudo chown -R 1000:1000 data cache user` 即可。macOS / Windows + Docker Desktop 通常自动处理；只有 Linux 直接装 Docker / Podman rootful 时会遇到
-- **DJ 自动开播报 `claude exit 1`（cli 模式）**：容器找不到 Claude Code 凭证。检查 `~/.claude:/home/node/.claude:ro` 这行有没有取消注释。**macOS 用户该路径无效**（凭证在 Keychain 里），改用 `CLAUDE_MODE=api` 或者 macOS 上直接裸跑
+- **DJ 自动开播报 `claude exit 1`（cli 模式）**：容器找不到 Claude Code 凭证。检查 `~/.claude:/home/node/.claude:ro` 这行有没有取消注释。**macOS 用户该路径无效**（凭证在 Keychain 里），改用 `LLM_PROVIDER=claude-api`、`LLM_PROVIDER=doubao`，或者 macOS 上直接裸跑
 - **8787 端口被占了**：编辑 `compose.yml`，把 `"8787:8787"` 改成 `"8788:8787"`，浏览器开 `:8788`
 - **日历没了**：Docker 容器看不到 macOS 日历。设 `CALENDAR_ICS_URL` 为 Google/iCloud 日历的 ICS 订阅链接即可恢复
 - **想看日志**：`docker compose logs -f claudio`
@@ -180,7 +180,11 @@ claudio-radio/
 │   ├── server.js              # HTTP + WebSocket 主服务
 │   ├── router.js              # 意图分流：简单指令 vs 走 claude
 │   ├── context.js             # 六片 prompt 组装
-│   ├── claude.js              # Claude 大脑适配器（CLI / API 双模式）
+│   ├── llm/
+│   │   ├── index.js           # provider 路由（基于 LLM_PROVIDER 选）
+│   │   ├── parse.js           # parseDjResponse
+│   │   └── providers/         # claude-cli / claude-api / doubao
+│   ├── env.js                 # 启动期环境变量校验（含 LLM_PROVIDER）
 │   ├── tts.js                 # 火山引擎豆包 TTS + 缓存
 │   ├── scheduler.js           # 节律调度（cron）
 │   ├── state.js               # SQLite 持久化

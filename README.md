@@ -11,7 +11,21 @@
 - 每小时脉冲检查、可以用自然语言跟 DJ 聊天（"太吵了换一首"、"来点爵士"）
 - 天气和今天的日程会被 DJ 夹杂到串词里
 
-## Docker 部署（推荐）
+## 怎么选：Docker 还是裸跑？
+
+| 场景 | 推荐 |
+|---|---|
+| **macOS 上自己日常用** | **裸跑**（`npm run dev`）— 直接用 macOS 日历 + Keychain 里的 Claude Code Max 订阅 |
+| **想分发给别人 / 给朋友演示** | Docker —— 一行 `docker compose up` 就跑起来 |
+| **想 24h 跑（小服务器 / 树莓派 / VPS）** | Docker |
+| **Linux 桌面或服务器自用** | Docker（cli 模式 + Max 订阅都能完整 work）|
+| **Windows + WSL2** | 都行；Docker Desktop 体验更好 |
+
+简单说：**Docker 是分发与服务器路径，不是 Mac 上日常开发的优选**。Mac 上自用直接看下方 [运行前准备](#运行前准备) 章节。
+
+---
+
+## Docker 部署（分发 / 服务器场景）
 
 **前置**：Docker Desktop 或 Docker Engine + `docker compose` v2。
 
@@ -46,6 +60,8 @@ docker compose up -d
 | `api`（默认）| 填 `ANTHROPIC_API_KEY` | 不用动 |
 | `cli`（蹭 Max 订阅）| 留空 `ANTHROPIC_API_KEY`，写 `CLAUDE_MODE=cli` | 取消注释 `- ~/.claude:/home/node/.claude:ro` 那行；宿主机要先 `claude login` 过 |
 
+> ⚠️ **`cli` 模式仅在 Linux 宿主上可用**。macOS 上 Claude Code 把 OAuth token 存在系统 Keychain 里，不在 `~/.claude/`，挂载进容器拿不到凭证。Mac 用户如果想用 Max 订阅，请用[裸跑模式](#运行前准备)；想用 Docker 就走 `api` 模式。
+
 ### 升级与回滚
 
 ```bash
@@ -60,6 +76,7 @@ docker compose pull && docker compose up -d
 ### 常见问题
 
 - **报 `数据目录不可写 / Data directory not writable`**：Linux 宿主上挂载目录必须能被容器内的 `node` 用户（uid 1000）写。`mkdir -p data cache user` 之后跑一句 `sudo chown -R 1000:1000 data cache user` 即可。macOS / Windows + Docker Desktop 通常自动处理；只有 Linux 直接装 Docker / Podman rootful 时会遇到
+- **DJ 自动开播报 `claude exit 1`（cli 模式）**：容器找不到 Claude Code 凭证。检查 `~/.claude:/home/node/.claude:ro` 这行有没有取消注释。**macOS 用户该路径无效**（凭证在 Keychain 里），改用 `CLAUDE_MODE=api` 或者 macOS 上直接裸跑
 - **8787 端口被占了**：编辑 `compose.yml`，把 `"8787:8787"` 改成 `"8788:8787"`，浏览器开 `:8788`
 - **日历没了**：Docker 容器看不到 macOS 日历。设 `CALENDAR_ICS_URL` 为 Google/iCloud 日历的 ICS 订阅链接即可恢复
 - **想看日志**：`docker compose logs -f claudio`

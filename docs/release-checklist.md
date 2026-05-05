@@ -17,7 +17,11 @@ In a fresh directory (`mkdir /tmp/release-smoke && cd /tmp/release-smoke`):
 - [ ] `docker compose pull`（拿到 `:latest` 镜像）
 - [ ] `docker compose up -d`
 - [ ] 浏览器开 `http://localhost:8787`，验证 DJ 串词出现 / 歌能播 / 天气对
-- [ ] CLAUDE_MODE 切换：编辑 .env → `CLAUDE_MODE=cli`，取消注释 `~/.claude` volume，重启 → 验证可用
+- [ ] LLM_PROVIDER 切换三模式各跑一次：
+  - [ ] `LLM_PROVIDER=claude-cli`（Linux 宿主，挂 `~/.claude`）
+  - [ ] `LLM_PROVIDER=claude-api`（填 `ANTHROPIC_API_KEY`）
+  - [ ] `LLM_PROVIDER=doubao`（填 `DOUBAO_API_KEY`，验证国内访问 ark.cn-beijing.volces.com 通畅）
+- [ ] 旧 `.env` 里如果有 `CLAUDE_MODE=...` → 启动应该 fail-fast 给清晰迁移提示
 - [ ] CALENDAR_ICS_URL：填一个真实 ICS URL，重启 → 验证今日日程出现在 DJ 串词
 - [ ] `docker compose down && docker compose up -d` 三次循环 → 验证 state / cache / user 数据零丢失
 - [ ] `docker pull --platform linux/amd64 melbpaulz/claudio-radio:latest`（如果你在 arm64）

@@ -1,10 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-// 兜底环境变量，避免 import 期做配置检查
-process.env.ANTHROPIC_API_KEY ||= 'test-key';
-
-const { parseDjResponse } = await import('../src/claude.js');
+import { parseDjResponse } from '../src/llm/parse.js';
 
 test('parseDjResponse: 完整合法 JSON 正常解析', () => {
   const raw = JSON.stringify({

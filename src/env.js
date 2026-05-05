@@ -30,9 +30,29 @@ export function validateEnv() {
     errors.push('OPENWEATHER_API_KEY 缺失 / OPENWEATHER_API_KEY is required (https://openweathermap.org/api 免费注册)');
   }
 
-  const mode = env.CLAUDE_MODE || 'cli';
-  if (mode === 'api' && !env.ANTHROPIC_API_KEY) {
-    errors.push('CLAUDE_MODE=api 但 ANTHROPIC_API_KEY 缺失 / ANTHROPIC_API_KEY is required when CLAUDE_MODE=api');
+  // 1. Detect legacy CLAUDE_MODE — fail-fast with migration guidance.
+  if (env.CLAUDE_MODE) {
+    errors.push(
+      'CLAUDE_MODE 已废弃 / CLAUDE_MODE is deprecated, use LLM_PROVIDER instead. ' +
+      '迁移：CLAUDE_MODE=cli → LLM_PROVIDER=claude-cli; CLAUDE_MODE=api → LLM_PROVIDER=claude-api'
+    );
+  }
+
+  // 2. Validate LLM_PROVIDER value.
+  const validProviders = ['claude-cli', 'claude-api', 'doubao'];
+  const provider = env.LLM_PROVIDER || 'claude-cli';
+  if (!validProviders.includes(provider)) {
+    errors.push(
+      `LLM_PROVIDER 无效 / LLM_PROVIDER must be one of: ${validProviders.join(', ')} (got: ${provider})`
+    );
+  }
+
+  // 3. Provider-specific required env.
+  if (provider === 'claude-api' && !env.ANTHROPIC_API_KEY) {
+    errors.push('LLM_PROVIDER=claude-api 但 ANTHROPIC_API_KEY 缺失 / ANTHROPIC_API_KEY required when LLM_PROVIDER=claude-api');
+  }
+  if (provider === 'doubao' && !env.DOUBAO_API_KEY) {
+    errors.push('LLM_PROVIDER=doubao 但 DOUBAO_API_KEY 缺失 / DOUBAO_API_KEY required when LLM_PROVIDER=doubao (https://console.volcengine.com/ark 创建)');
   }
 
   return errors;

@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 import { log } from './log.js';
 import { intent } from './router.js';
-import { ask } from './claude.js';
+import { ask, parseDjResponse } from './llm/index.js';
 import { build as buildContext } from './context.js';
 import { synth, cacheDir, ttsUrl, provider as ttsProvider } from './tts.js';
 import { startScheduler } from './scheduler.js';
@@ -98,7 +98,8 @@ async function handleTriggerInner({ userInput, trigger }) {
     queue: runtime.queue,
   });
 
-  const { say, play, immediate: modelImmediate, clearQueue: modelClearQueue, playNext: modelPlayNext, reason } = await ask(prompt);
+  const raw = await ask(prompt);
+  const { say, play, immediate: modelImmediate, clearQueue: modelClearQueue, playNext: modelPlayNext, reason } = parseDjResponse(raw);
   // 用户意图兜底：只要说了"换/切/别的/不想听/这首不行/太吵/太慢/太快"，强制当作切歌，不管 Claude 返回了什么
   const userWantsChange = trigger === 'user' && /换|切|别的|不想|不行|太吵|太慢|太快/.test(userInput);
   const immediate = userWantsChange || modelImmediate;
@@ -343,7 +344,7 @@ app.get('/api/health', async (_, res) => {
     login,
     poolSize: runtime.songPool.length,
     queueSize: runtime.queue.length,
-    mode: process.env.CLAUDE_MODE || 'cli',
+    llmProvider: process.env.LLM_PROVIDER || 'claude-cli',
     tts: ttsProvider(),
   });
 });
@@ -368,7 +369,7 @@ startScheduler({ onTrigger: ({ trigger }) => {
 // ---- 启动 ----
 server.listen(PORT, async () => {
   log.info(`🎙️ Claudio Radio 在 http://localhost:${PORT}`);
-  log.info(`   CLAUDE_MODE = ${process.env.CLAUDE_MODE || 'cli'}`);
+  log.info(`   LLM_PROVIDER = ${process.env.LLM_PROVIDER || 'claude-cli'}`);
 
   if (!(await ncm.ping())) {
     log.warn('⚠️  NeteaseCloudMusicApi 没起来！另开一个终端跑 `npm run ncm`');

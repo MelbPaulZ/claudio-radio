@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 import { log } from './log.js';
 import { intent } from './router.js';
-import { ask } from './llm/index.js';
+import { ask, parseDjResponse } from './llm/index.js';
 import { build as buildContext } from './context.js';
 import { synth, cacheDir, ttsUrl, provider as ttsProvider } from './tts.js';
 import { startScheduler } from './scheduler.js';
@@ -98,7 +98,8 @@ async function handleTriggerInner({ userInput, trigger }) {
     queue: runtime.queue,
   });
 
-  const { say, play, immediate: modelImmediate, clearQueue: modelClearQueue, playNext: modelPlayNext, reason } = await ask(prompt);
+  const raw = await ask(prompt);
+  const { say, play, immediate: modelImmediate, clearQueue: modelClearQueue, playNext: modelPlayNext, reason } = parseDjResponse(raw);
   // 用户意图兜底：只要说了"换/切/别的/不想听/这首不行/太吵/太慢/太快"，强制当作切歌，不管 Claude 返回了什么
   const userWantsChange = trigger === 'user' && /换|切|别的|不想|不行|太吵|太慢|太快/.test(userInput);
   const immediate = userWantsChange || modelImmediate;

@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 import { log } from './log.js';
 import { intent } from './router.js';
-import { ask } from './claude.js';
+import { ask } from './llm/index.js';
 import { build as buildContext } from './context.js';
 import { synth, cacheDir, ttsUrl, provider as ttsProvider } from './tts.js';
 import { startScheduler } from './scheduler.js';

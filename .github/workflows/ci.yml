@@ -54,7 +54,7 @@ jobs:
           VOLC_APPID=ci-app
           VOLC_ACCESS_TOKEN=ci-tok
           OPENWEATHER_API_KEY=ci-wk
-          CLAUDE_MODE=api
+          LLM_PROVIDER=claude-api
           ANTHROPIC_API_KEY=sk-ci-dummy
           PORT=8787
           LOG_LEVEL=info

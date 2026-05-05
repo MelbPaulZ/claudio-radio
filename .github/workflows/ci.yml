@@ -60,6 +60,8 @@ jobs:
           LOG_LEVEL=info
           EOF
           mkdir -p data cache user
+          # Container runs as uid 1000 (node user); make bind-mount dirs writable.
+          sudo chown -R 1000:1000 data cache user
 
       - name: Override compose to use local images
         run: |

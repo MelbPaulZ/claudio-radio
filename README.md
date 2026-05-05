@@ -59,6 +59,7 @@ docker compose pull && docker compose up -d
 
 ### 常见问题
 
+- **报 `数据目录不可写 / Data directory not writable`**：Linux 宿主上挂载目录必须能被容器内的 `node` 用户（uid 1000）写。`mkdir -p data cache user` 之后跑一句 `sudo chown -R 1000:1000 data cache user` 即可。macOS / Windows + Docker Desktop 通常自动处理；只有 Linux 直接装 Docker / Podman rootful 时会遇到
 - **8787 端口被占了**：编辑 `compose.yml`，把 `"8787:8787"` 改成 `"8788:8787"`，浏览器开 `:8788`
 - **日历没了**：Docker 容器看不到 macOS 日历。设 `CALENDAR_ICS_URL` 为 Google/iCloud 日历的 ICS 订阅链接即可恢复
 - **想看日志**：`docker compose logs -f claudio`

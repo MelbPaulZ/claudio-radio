@@ -20,6 +20,7 @@
 | **想 24h 跑（小服务器 / 树莓派 / VPS）** | Docker |
 | **Linux 桌面或服务器自用** | Docker（cli 模式 + Max 订阅都能完整 work）|
 | **Windows + WSL2** | 都行；Docker Desktop 体验更好 |
+| **中国大陆服务器** | Docker + `LLM_PROVIDER=doubao`（豆包），用国产 LLM 替代 Anthropic |
 
 简单说：**Docker 是分发与服务器路径，不是 Mac 上日常开发的优选**。Mac 上自用直接看下方 [运行前准备](#运行前准备) 章节。
 
@@ -53,14 +54,19 @@ docker compose up -d
 # 浏览器打开 http://localhost:8787
 ```
 
-### CLAUDE_MODE：用 API key 还是 Claude Code CLI？
+### LLM_PROVIDER：选择 DJ 大脑
 
-| 模式 | 怎么填 .env | compose.yml 调整 |
-|---|---|---|
-| `api`（默认）| 填 `ANTHROPIC_API_KEY` | 不用动 |
-| `cli`（蹭 Max 订阅）| 留空 `ANTHROPIC_API_KEY`，写 `CLAUDE_MODE=cli` | 取消注释 `- ~/.claude:/home/node/.claude:ro` 那行；宿主机要先 `claude login` 过 |
+| Provider | 适用场景 | 怎么填 .env | compose.yml 调整 |
+|---|---|---|---|
+| `claude-cli`（默认）| 本机用 Max 订阅 | `LLM_PROVIDER=claude-cli` | 取消注释 `- ~/.claude:/home/node/.claude:ro` 那行；宿主机要先 `claude login` 过 |
+| `claude-api` | Anthropic HTTP（境外服务器或想按 token 计费） | `LLM_PROVIDER=claude-api` + `ANTHROPIC_API_KEY=...` | 不用动 |
+| `doubao` | **中国大陆部署推荐**——Anthropic 不可达时 | `LLM_PROVIDER=doubao` + `DOUBAO_API_KEY=...` | 不用动 |
 
-> ⚠️ **`cli` 模式仅在 Linux 宿主上可用**。macOS 上 Claude Code 把 OAuth token 存在系统 Keychain 里，不在 `~/.claude/`，挂载进容器拿不到凭证。Mac 用户如果想用 Max 订阅，请用[裸跑模式](#运行前准备)；想用 Docker 就走 `api` 模式。
+申请豆包 API key：https://console.volcengine.com/ark
+
+> ⚠️ **`claude-cli` 模式仅在 Linux 宿主上可用**。macOS 上 Claude Code 把 OAuth token 存在系统 Keychain 里，不在 `~/.claude/`，挂载进容器拿不到凭证。Mac 用户如果想用 Max 订阅，请用[裸跑模式](#运行前准备)；想用 Docker 就走 `claude-api` 或 `doubao`。
+
+> ℹ️ 旧字段 `CLAUDE_MODE` 已废弃（v0.2.0 起）。迁移：`cli` → `claude-cli`，`api` → `claude-api`。启动会 fail-fast 给迁移提示。
 
 ### 升级与回滚
 

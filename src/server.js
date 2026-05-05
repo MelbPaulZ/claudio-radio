@@ -343,7 +343,7 @@ app.get('/api/health', async (_, res) => {
     login,
     poolSize: runtime.songPool.length,
     queueSize: runtime.queue.length,
-    mode: process.env.CLAUDE_MODE || 'cli',
+    llmProvider: process.env.LLM_PROVIDER || 'claude-cli',
     tts: ttsProvider(),
   });
 });
@@ -368,7 +368,7 @@ startScheduler({ onTrigger: ({ trigger }) => {
 // ---- 启动 ----
 server.listen(PORT, async () => {
   log.info(`🎙️ Claudio Radio 在 http://localhost:${PORT}`);
-  log.info(`   CLAUDE_MODE = ${process.env.CLAUDE_MODE || 'cli'}`);
+  log.info(`   LLM_PROVIDER = ${process.env.LLM_PROVIDER || 'claude-cli'}`);
 
   if (!(await ncm.ping())) {
     log.warn('⚠️  NeteaseCloudMusicApi 没起来！另开一个终端跑 `npm run ncm`');

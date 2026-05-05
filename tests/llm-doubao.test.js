@@ -51,7 +51,9 @@ test('doubao.ask: posts to ark endpoint with bearer auth and json body', async (
   assert.equal(body.model, 'doubao-pro-32k');
   assert.equal(body.messages[0].role, 'user');
   assert.equal(body.messages[0].content, 'build a JSON');
-  assert.deepEqual(body.response_format, { type: 'json_object' });
+  // No response_format — older doubao-pro-* models reject json_object;
+  // parseDjResponse handles markdown fences / surrounding text via regex.
+  assert.equal(body.response_format, undefined);
 });
 
 test('doubao.ask: throws on 4xx with response body in error', async () => {

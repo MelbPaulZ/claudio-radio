@@ -14,10 +14,11 @@ export async function ask(prompt) {
   const model = process.env.DOUBAO_MODEL || DEFAULT_MODEL;
   const endpoint = process.env.DOUBAO_ENDPOINT || DEFAULT_ENDPOINT;
 
+  // 不发 response_format —— 旧的 doubao-pro-* model 不支持 json_object。
+  // parseDjResponse 的正则能从任何 markdown 围栏 / 解释文本里挖出 JSON 对象。
   const body = {
     model,
     messages: [{ role: 'user', content: prompt }],
-    response_format: { type: 'json_object' },
   };
 
   const res = await fetch(endpoint, {

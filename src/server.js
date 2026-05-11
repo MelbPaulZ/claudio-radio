@@ -57,6 +57,10 @@ function broadcast(event, data) {
   const msg = JSON.stringify({ event, data, t: Date.now() });
   wss.clients.forEach(c => c.readyState === 1 && c.send(msg));
 }
+function hasListeners() {
+  for (const c of wss.clients) if (c.readyState === 1) return true;
+  return false;
+}
 
 // ---- 核心：处理一次触发 ----
 async function handleTrigger({ userInput = '', trigger = 'user' } = {}) {
@@ -350,10 +354,15 @@ app.get('/api/health', async (_, res) => {
 });
 
 // ---- Scheduler ----
-// 两条规则：
-//  1) 用户请求正在处理（LLM 在算）→ cron 跳过，避免并发请求打架
-//  2) 用户说话后 AUTO_TRIGGER_COOLDOWN_MS 内 → cron 跳过，避免踩用户意图继续加歌
+// 三条规则：
+//  1) 没有任何浏览器 WS 在线 → cron 跳过，省 LLM/TTS 调用（用户主动 /api/chat 和 startup 不走这里，不受影响）
+//  2) 用户请求正在处理（LLM 在算）→ cron 跳过，避免并发请求打架
+//  3) 用户说话后 AUTO_TRIGGER_COOLDOWN_MS 内 → cron 跳过，避免踩用户意图继续加歌
 startScheduler({ onTrigger: ({ trigger }) => {
+  if (!hasListeners()) {
+    log.info(`⏸ 跳过自动触发 ${trigger}（没有在线监听者）`);
+    return Promise.resolve();
+  }
   if (runtime.userInFlight) {
     log.info(`⏸ 跳过自动触发 ${trigger}（用户请求正在处理中）`);
     return Promise.resolve();

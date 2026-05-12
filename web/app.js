@@ -245,19 +245,25 @@ async function playDj(data) {
 
 // ---- 音频工具 ----
 function fadeVolume(el, target, duration) {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     const start = el.volume;
     const diff = target - start;
-    if (Math.abs(diff) < 0.01) { el.volume = target; resolve(); return; }
+    if (Math.abs(diff) < 0.01) { el.volume = clamp01(target); resolve(); return; }
     const t0 = performance.now();
     function step(now) {
-      const progress = Math.min(1, (now - t0) / duration);
-      el.volume = start + diff * progress;
-      if (progress < 1) requestAnimationFrame(step); else resolve();
+      try {
+        const progress = Math.max(0, Math.min(1, (now - t0) / duration));
+        el.volume = clamp01(start + diff * progress);
+        if (progress < 1) requestAnimationFrame(step); else resolve();
+      } catch (e) {
+        reject(e);
+      }
     }
     requestAnimationFrame(step);
   });
 }
+
+function clamp01(v) { return Math.max(0, Math.min(1, v)); }
 
 function playAndWait(el) {
   return new Promise((resolve, reject) => {

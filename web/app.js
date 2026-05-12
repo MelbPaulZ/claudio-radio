@@ -12,6 +12,29 @@ const music = $('player-music');
 const tts = $('player-tts');
 const chatLog = $('chat-log');
 
+// Web Audio 图：iOS Safari 上 HTMLMediaElement.volume 是 no-op，必须走 GainNode 才能真的 duck。
+// 顺带：audioCtx.resume() 一次 user gesture 后，整张图里的 <audio> 都不再受 autoplay 单元素限制。
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const musicGain = audioCtx.createGain();
+const ttsGain = audioCtx.createGain();
+audioCtx.createMediaElementSource(music).connect(musicGain).connect(audioCtx.destination);
+audioCtx.createMediaElementSource(tts).connect(ttsGain).connect(audioCtx.destination);
+
+function setMusicGain(v) {
+  const now = audioCtx.currentTime;
+  musicGain.gain.cancelScheduledValues(now);
+  musicGain.gain.setValueAtTime(v, now);
+}
+function fadeMusicGain(target, durationMs) {
+  return new Promise(resolve => {
+    const now = audioCtx.currentTime;
+    musicGain.gain.cancelScheduledValues(now);
+    musicGain.gain.setValueAtTime(musicGain.gain.value, now);
+    musicGain.gain.linearRampToValueAtTime(target, now + durationMs / 1000);
+    setTimeout(resolve, durationMs);
+  });
+}
+
 let current = null;
 let playing = false;
 let lastSongId = null;   // detect real track transitions for event rows
@@ -130,6 +153,8 @@ function tryPlayMusic() {
 // 关键：跳过 player 控制按钮 —— 它们自己的 onclick 会处理。否则 pointerdown 捕获阶段会
 // 先触发一次 play()，然后 click 阶段 btnPlay.onclick 发现 playing=true 又把它 pause 掉。
 function resumeIfBlocked(e) {
+  // 第一次 user gesture 解锁 AudioContext —— TTS 元素也跟着自动解锁
+  if (audioCtx.state === 'suspended') audioCtx.resume();
   if (e && e.target && e.target.closest && e.target.closest('#btn-play, #btn-prev, #btn-next')) return;
   if (autoplayBlocked && music.src) tryPlayMusic();
 }
@@ -187,12 +212,12 @@ async function playDj(data) {
       if (inTransition) { console.warn('[transition] 等 8s 前一次还没完，放弃本次切歌'); return; }
     }
     inTransition = true;
-    // 防御：如果当前 music.volume < 0.5，说明可能还在 duck 或上一次 fade 没恢复，fallback 到 1.0
-    const savedVol = music.volume >= 0.5 ? music.volume : 1.0;
-    console.log('[transition] start, savedVol=', savedVol, 'music.volume=', music.volume);
+    // 防御：如果当前 gain < 0.5，说明可能还在 duck 或上一次 fade 没恢复，fallback 到 1.0
+    const savedGain = musicGain.gain.value >= 0.5 ? musicGain.gain.value : 1.0;
+    console.log('[transition] start, savedGain=', savedGain);
 
     try {
-      await fadeVolume(music, 0, FADE_DURATION);
+      await fadeMusicGain(0, FADE_DURATION);
 
       if (hasTts) {
         tts.src = data.url;
@@ -204,36 +229,33 @@ async function playDj(data) {
       const res = await fetch('/api/advance', { method: 'POST' });
       const j = await res.json();
       if (j.current) {
-        // 关键：在切 src 之前把音量先恢复，新歌一响就是正常音量（放弃 fade-in 效果，换 autoplay 稳定性）
-        music.volume = savedVol;
+        // 在切 src 之前把音量先恢复，新歌一响就是正常音量
+        setMusicGain(savedGain);
         setCurrent(j.current);
-        console.log('[transition] done, current=', j.current.name, 'music.volume=', music.volume);
+        console.log('[transition] done, current=', j.current.name);
       } else {
-        music.volume = savedVol;
+        setMusicGain(savedGain);
       }
     } catch (e) {
       console.warn('[transition] fail:', e);
-      music.volume = savedVol;
+      setMusicGain(savedGain);
     } finally {
       inTransition = false;
     }
   } else if (hasTts) {
-    // ---- 普通 duck：压低音量说话，说完恢复 ----
-    // 防御：若当前 music.volume < 0.5，说明上一次 duck 还没恢复（ended 未触发
-    // 或被新 src 中断），直接读当前值会把"已被压低的音量"当成正常音量保存，
-    // 之后 restore 反而把音量锁死在低位。此时 fallback 到 1.0。
-    const savedVol = music.volume >= 0.5 ? music.volume : 1.0;
-    music.volume = Math.max(TTS_DUCK_MIN, savedVol * TTS_DUCK_FACTOR);
+    // ---- 普通 duck：压低音乐说话，说完恢复 ----
+    // 防御：若当前 gain < 0.5，说明上一次 duck 还没恢复，直接读会把"已被压低的值"当成正常值保存，
+    // 之后 restore 反而把音量锁死在低位。fallback 到 1.0。
+    const savedGain = musicGain.gain.value >= 0.5 ? musicGain.gain.value : 1.0;
+    setMusicGain(Math.max(TTS_DUCK_MIN, savedGain * TTS_DUCK_FACTOR));
 
-    // 两种结束路径恢复音量：正常播完 / 播放出错。
-    // 注意：不能监听 'abort' —— 设置 tts.src 时浏览器会自己 fire abort，
-    // 会把本轮的 restore 提前触发，导致音乐瞬间被恢复、听起来像没 duck。
-    // "被下一段 TTS 打断"的场景由新一轮 duck 分支里的 savedVol 防御 + 新一轮 ended 接管。
+    // 注意：不监听 'abort' —— 设置 tts.src 时浏览器会自己 fire abort，
+    // 会把本轮 restore 提前触发，听起来像没 duck。被下一段 TTS 打断的场景由新一轮 savedGain 防御接管。
     let restored = false;
     const restore = () => {
       if (restored) return;
       restored = true;
-      music.volume = savedVol;
+      setMusicGain(savedGain);
     };
     tts.addEventListener('ended', restore, { once: true });
     tts.addEventListener('error', restore, { once: true });
@@ -244,27 +266,6 @@ async function playDj(data) {
 }
 
 // ---- 音频工具 ----
-function fadeVolume(el, target, duration) {
-  return new Promise((resolve, reject) => {
-    const start = el.volume;
-    const diff = target - start;
-    if (Math.abs(diff) < 0.01) { el.volume = clamp01(target); resolve(); return; }
-    const t0 = performance.now();
-    function step(now) {
-      try {
-        const progress = Math.max(0, Math.min(1, (now - t0) / duration));
-        el.volume = clamp01(start + diff * progress);
-        if (progress < 1) requestAnimationFrame(step); else resolve();
-      } catch (e) {
-        reject(e);
-      }
-    }
-    requestAnimationFrame(step);
-  });
-}
-
-function clamp01(v) { return Math.max(0, Math.min(1, v)); }
-
 function playAndWait(el) {
   return new Promise((resolve, reject) => {
     el.addEventListener('ended', resolve, { once: true });

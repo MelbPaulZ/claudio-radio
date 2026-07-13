@@ -189,6 +189,16 @@ function setCurrent(song) {
   }
 }
 
+// 上报"当前这首播完了"。带上歌 id：多客户端同开时每个客户端都会上报，
+// 服务端靠 id 幂等化，只有第一个请求真正切歌，避免一次串场跳掉两首
+function advanceCurrent() {
+  return fetch('/api/advance', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ finishedId: current?.id ?? null }),
+  });
+}
+
 async function playDj(data) {
   if (!data?.text) return;
   const hasTts = Boolean(data.url);
@@ -226,7 +236,7 @@ async function playDj(data) {
 
       await sleep(SEGUE_GAP);
 
-      const res = await fetch('/api/advance', { method: 'POST' });
+      const res = await advanceCurrent();
       const j = await res.json();
       if (j.current) {
         // 在切 src 之前把音量先恢复，新歌一响就是正常音量
@@ -322,7 +332,7 @@ music.addEventListener('ended', () => {
   // 确保是真正播完（至少播了 30 秒），而不是 URL 过期/加载失败
   if (music.currentTime > 30) {
     // 立刻开始 advance，同时利用预加载
-    fetch('/api/advance', { method: 'POST' }).then(r => r.json()).then(j => setCurrent(j.current));
+    advanceCurrent().then(r => r.json()).then(j => setCurrent(j.current));
   } else {
     console.warn('歌曲过早结束 (', music.currentTime.toFixed(1), 's)，可能是 URL 过期，尝试刷新直链');
     retryCurrentSong();
@@ -344,10 +354,10 @@ async function retryCurrentSong() {
       music.play().catch(() => {});
     } else {
       // 拿不到就跳下一首
-      fetch('/api/advance', { method: 'POST' }).then(r => r.json()).then(j => setCurrent(j.current));
+      advanceCurrent().then(r => r.json()).then(j => setCurrent(j.current));
     }
   } catch {
-    fetch('/api/advance', { method: 'POST' }).then(r => r.json()).then(j => setCurrent(j.current));
+    advanceCurrent().then(r => r.json()).then(j => setCurrent(j.current));
   }
 }
 

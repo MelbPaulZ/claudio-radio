@@ -295,8 +295,13 @@ app.post('/api/trigger', async (req, res) => {
   }
 });
 
-// 前端标记"这首播完了"
+// 前端标记"这首播完了"。多客户端时 dj_say/ended 是广播，每个客户端都会上报——
+// 靠 finishedId 幂等化：只有第一个匹配当前歌的请求真正切歌，其余返回现状
 app.post('/api/advance', async (req, res) => {
+  const finishedId = req.body?.finishedId;
+  if (finishedId != null && runtime.current && String(runtime.current.id) !== String(finishedId)) {
+    return res.json({ current: runtime.current, alreadyAdvanced: true });
+  }
   if (runtime.current) state.recordPlay(runtime.current, 'finished');
   runtime.current = runtime.queue.shift() || null;
   broadcast('now_playing', runtime.current);
